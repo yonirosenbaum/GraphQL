@@ -1,0 +1,243 @@
+extend schema
+  @link(url: "https://specs.apollo.dev/federation/v2.0", import: ["@key"])
+
+type Query {
+  ### Listings
+  featuredListings: [Listing!]!
+  searchListings(criteria: SearchListingsInput): [Listing]!
+  hostListings: [Listing]!
+  listing(id: ID!): Listing
+  listingAmenities: [Amenity!]!
+
+  ### Bookings
+  bookingsForListing(listingId: ID!, status: BookingStatus): [Booking]!
+  guestBookings: [Booking]!
+  pastGuestBookings: [Booking]!
+  upcomingGuestBookings: [Booking]!
+  currentGuestBooking: Booking
+}
+
+type Mutation {
+  ### Listings
+  createListing(listing: CreateListingInput!): CreateListingResponse!
+  updateListing(
+    listingId: ID!
+    listing: UpdateListingInput!
+  ): UpdateListingResponse!
+
+  ### Bookings
+  createBooking(createBookingInput: CreateBookingInput): CreateBookingResponse!
+
+  ### Reviews
+  submitHostAndLocationReviews(
+    bookingId: ID!
+    hostReview: ReviewInput!
+    locationReview: ReviewInput!
+  ): SubmitHostAndLocationReviewsResponse!
+  submitGuestReview(
+    bookingId: ID!
+    guestReview: ReviewInput!
+  ): SubmitGuestReviewResponse!
+
+  ### Wallet
+  addFundsToWallet(amount: Float!): AddFundsToWalletResponse!
+}
+
+interface MutationResponse {
+  code: Int!
+  success: Boolean!
+  message: String!
+}
+
+#### User accounts
+
+interface User {
+  id: ID!
+}
+
+type Host implements User @key(fields: "id") {
+  id: ID!
+  overallRating: Float
+}
+
+type Guest implements User @key(fields: "id") {
+  id: ID!
+  funds: Float!
+}
+
+### Listings
+
+type Listing {
+  id: ID!
+  title: String!
+  description: String!
+  photoThumbnail: String!
+  numOfBeds: Int!
+  costPerNight: Float!
+  locationType: LocationType!
+  host: Host!
+  amenities: [Amenity]!
+  bookings: [Booking]!
+  numberOfUpcomingBookings: Int!
+  currentlyBookedDates: [ReservedDate]!
+  reviews: [Review]!
+  overallRating: Float
+  totalCost(checkInDate: String!, checkOutDate: String!): Float!
+  coordinates: GalacticCoordinates
+}
+
+type GalacticCoordinates {
+  latitude: Float!
+  longitude: Float!
+}
+
+type ReservedDate {
+  checkInDate: String!
+  checkOutDate: String!
+}
+
+type Amenity {
+  id: ID!
+  category: AmenityCategory!
+  name: String!
+}
+
+enum AmenityCategory {
+  ACCOMMODATION_DETAILS
+  SPACE_SURVIVAL
+  OUTDOORS
+}
+
+enum LocationType {
+  SPACESHIP
+  HOUSE
+  CAMPSITE
+  APARTMENT
+  ROOM
+}
+
+input SearchListingsInput {
+  checkInDate: String!
+  checkOutDate: String!
+  numOfBeds: Int
+  page: Int
+  limit: Int
+  sortBy: SortByCriteria
+}
+
+enum SortByCriteria {
+  COST_ASC
+  COST_DESC
+}
+
+input CreateListingInput {
+  title: String!
+  description: String!
+  photoThumbnail: String!
+  numOfBeds: Int!
+  costPerNight: Float!
+  locationType: LocationType!
+  amenities: [ID!]!
+}
+
+input UpdateListingInput {
+  title: String
+  description: String
+  photoThumbnail: String
+  numOfBeds: Int
+  costPerNight: Float
+  locationType: LocationType
+  amenities: [ID]
+}
+
+type CreateListingResponse implements MutationResponse {
+  code: Int!
+  success: Boolean!
+  message: String!
+  listing: Listing
+}
+
+type UpdateListingResponse implements MutationResponse {
+  code: Int!
+  success: Boolean!
+  message: String!
+  listing: Listing
+}
+
+### Bookings
+
+type Booking {
+  id: ID!
+  listing: Listing!
+  guest: Guest!
+  checkInDate: String!
+  checkOutDate: String!
+  totalPrice: Float!
+  status: BookingStatus!
+  locationReview: Review
+  hostReview: Review
+  guestReview: Review
+}
+
+enum BookingStatus {
+  CURRENT
+  COMPLETED
+  UPCOMING
+}
+
+input CreateBookingInput {
+  listingId: ID!
+  checkInDate: ID!
+  checkOutDate: ID!
+}
+
+type NewBookingResponse {
+  id: ID!
+  checkInDate: String!
+  checkOutDate: String!
+}
+
+type CreateBookingResponse implements MutationResponse {
+  code: Int!
+  success: Boolean!
+  message: String!
+  booking: NewBookingResponse
+}
+
+### Reviews
+
+type Review {
+  id: ID!
+  text: String!
+  author: User!
+  rating: Float!
+}
+
+input ReviewInput {
+  text: String!
+  rating: Float!
+}
+
+type SubmitHostAndLocationReviewsResponse implements MutationResponse {
+  code: Int!
+  success: Boolean!
+  message: String!
+  hostReview: Review
+  locationReview: Review
+}
+
+type SubmitGuestReviewResponse implements MutationResponse {
+  code: Int!
+  success: Boolean!
+  message: String!
+  guestReview: Review
+}
+
+### Payments
+
+type AddFundsToWalletResponse implements MutationResponse {
+  code: Int!
+  success: Boolean!
+  message: String!
+  amount: Float
+}
